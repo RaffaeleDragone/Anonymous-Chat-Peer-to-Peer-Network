@@ -5,22 +5,49 @@
  */
 package it.unisa.p2p.gui;
 
+import it.unisa.p2p.beans.Chat;
 import it.unisa.p2p.beans.Message;
+import it.unisa.p2p.beans.MessageWrapper;
 import it.unisa.p2p.chat.AnonymousChatUser;
+import it.unisa.p2p.chat.StartAnonymousChat;
 
 import it.unisa.p2p.interfaces.MessageListener;
+import it.unisa.p2p.utils.ImageCompressor;
+import it.unisa.p2p.utils.UtilDate;
+import static it.unisa.p2p.utils.UtilDate.differenceDateInSeconds;
+import static it.unisa.p2p.utils.UtilDate.formatSecondsIn_sTime;
+import java.awt.Color;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.imageio.ImageIO;
 import javax.swing.ButtonGroup;
+import javax.swing.DefaultListModel;
+import javax.swing.JFileChooser;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JToggleButton;
+import javax.swing.border.LineBorder;
+import javax.swing.filechooser.FileFilter;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import net.tomp2p.peers.Number160;
+import net.tomp2p.peers.PeerAddress;
 
 /**
  *
@@ -31,51 +58,183 @@ public class MainFrame extends javax.swing.JFrame {
     /**
      * Creates new form MainFrame
      */
-    
-    
     ButtonGroup buttonGroupRooms = new ButtonGroup();
-    HashMap<String, List<Message>> hmListMessages=new HashMap<>();
-    String currentRoom=null;
+    HashMap<String, List<Message>> hmListMessages = new HashMap<>();
+    String currentRoom = null;
     AnonymousChatUser peer;
-    
+
+    //create the model and add elements
+    DefaultListModel<Message> listModel = new DefaultListModel<>();
+    javax.swing.Timer timerCountdown;
+
     public MainFrame() {
         initComponents();
         activatePanelWriterMessages(false);
         
-        this.setResizable(false);
     }
 
     public MainFrame(String master, int id) throws Exception {
         peer = new AnonymousChatUser(id, master, new MessageListenerImpl(id));
         initComponents();
         activatePanelWriterMessages(false);
+        lblNumPeer.setText(id + "");
+        //this.setResizable(false);
+    }
+
+    private void createRoom() {
+        String nameRoom = JOptionPane.showInputDialog("Please insert the name of room ");
+        if (nameRoom != null && !nameRoom.isEmpty()) {
+            Chat room = new Chat();
+            room.setRoomName(nameRoom);
+            room.setUsers(new HashSet<>());
+            //room.setPassword(pwd);
+            int useTimer = JOptionPane.showConfirmDialog(null, "Do you want to set a timer? ");
+            if (useTimer == 0) {
+                String s_time = JOptionPane.showInputDialog("Please insert time in minutes ");
+                Integer minutes = Integer.parseInt(s_time);
+                Long mills = 1000 * 60 * minutes.longValue();
+                Calendar endDateTime = Calendar.getInstance();
+                endDateTime.setTimeInMillis(endDateTime.getTimeInMillis() + mills);
+                room.setEndChat(endDateTime.getTime());
+
+            }
+            if (peer.getMyChatList() != null && peer.getMyChatList().contains(nameRoom)) {
+                JOptionPane.showMessageDialog(null, "Room already in use");
+            } else {
+                String res = peer.createRoom_(room);
+                
+                if (res != null) {
+                    if (res.equals("ok")) {
+                        hmListMessages.put(nameRoom, new ArrayList<>());
+
+                        JToggleButton btn = new JToggleButton(nameRoom);
+                        ActionListener listener = new ActionListener() {
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                setFocusRoom(e.getActionCommand());
+                            }
+                        };
+                        btn.addActionListener(listener);
+                        buttonGroupRooms.add(btn);
+                        panelSubRooms.add(btn);
+                        panelSubRooms.revalidate();
+                        panelSubRooms.repaint();
+
+                        if (room.getEndChat() != null) {
+                            scheduleCheckExistencyChat(room);
+                        }
+                    } else {
+                        String out = res.equals("ko") ? "Problems during creation of room, retry." : res;
+                        JOptionPane.showMessageDialog(null, res);
+                    }
+
+                } else {
+                    JOptionPane.showMessageDialog(null, "Error during creation of room " + nameRoom);
+                }
+            }
+        }
+    }
+
+    private void joinRoom() {
+        //Code for join in room
+        String nameRoom = JOptionPane.showInputDialog("Please insert the name of room ");
+        if (nameRoom != null && !nameRoom.isEmpty()) {
+            if (peer.getMyChatList() != null && peer.getMyChatList().contains(nameRoom)) {
+                JOptionPane.showMessageDialog(null, "Room already created");
+            } else {
+                boolean res = peer.joinRoom(nameRoom);
+                if (res) {
+                    hmListMessages.put(nameRoom, new ArrayList<>());
+                    JToggleButton btn = new JToggleButton(nameRoom);
+                    ActionListener listener = new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            setFocusRoom(e.getActionCommand());
+                        }
+                    };
+                    btn.addActionListener(listener);
+                    buttonGroupRooms.add(btn);
+                    panelSubRooms.add(btn);
+                    panelSubRooms.revalidate();
+                    panelSubRooms.repaint();
+
+                    Chat chat = peer.getChatRoom(nameRoom);
+                    if (chat.getEndChat() != null) {
+                        scheduleCheckExistencyChat(chat);
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(null, "Error during joining in room " + nameRoom);
+                }
+            }
+        } else {
+            JOptionPane.showMessageDialog(null, "Room name cannot be null " + nameRoom);
+        }
+    }
+
+    class MessageListenerImpl implements MessageListener {
+
+        int peerid;
+
+        public MessageListenerImpl(int peerid) {
+            this.peerid = peerid;
+
+        }
+
+        public String parseMessage(Object obj) {
+            Message msg=null;
+            if (obj instanceof Message) {
+                System.out.println("Instance of message");
+                msg = (Message) obj;
+            } else if (obj instanceof MessageWrapper) {
+                System.out.println("Instance of messageWrapper, received by peer : "+peerid);
+                MessageWrapper msgWrap = (MessageWrapper) obj;
+                msg = msgWrap.getMsg();
+                peer.forwardImageMessage(msg, msgWrap.getReceivers());
+            }
+
+            if(msg.getType()==1){
+                try {
+                    String name = writeImgOnDisk(msg.getImage());
+                    msg.setName_file(name);
+                    msg.setImage(null);
+                } catch (IOException ex) {
+                    Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+            
+            if (msg != null && msg.getRoomName() != null) {
+                if (hmListMessages.get(msg.getRoomName()) != null) {
+                    hmListMessages.get(msg.getRoomName()).add(msg);
+                    if (msg.getRoomName().equalsIgnoreCase(currentRoom)) {
+                        listModel.addElement(msg);
+                    }
+                    //JOptionPane.showMessageDialog(null, "[message Received]Message received in room : " + msg.getRoomName());
+                }
+            }
+
+            return "ok";
+        }
+
         
-        this.setResizable(false);
+
+        
     }
     
-    class MessageListenerImpl implements MessageListener{
-            
-            int peerid;
-
-            public MessageListenerImpl(int peerid)
-            {
-                this.peerid=peerid;
-
-            }
-            public String parseMessage(Object obj) {
-                Message msg= (Message) obj;
-                if(msg!=null && msg.getRoomName()!=null){
-                    if(hmListMessages.get(msg.getRoomName())!=null){
-                        hmListMessages.get(msg.getRoomName()).add(msg);
-                        if(msg.getRoomName().equalsIgnoreCase(currentRoom))
-                            lstMessages.add(msg.toString());
-                    }
+    private void notifyGuiRoom(String roomName) {
+           if (buttonGroupRooms != null && buttonGroupRooms.getElements() != null) {
+            Collections.list(buttonGroupRooms.getElements()).stream().forEach((btn) -> {
+                if (btn.getText().equalsIgnoreCase(roomName)) {
+                    btn.setBorder(new LineBorder(Color.BLACK));
                 }
-                
-                return "ok";
-            }
+            });
+        }
     }
-
+    private String writeImgOnDisk( byte[] image_byte) throws IOException {
+            String path=StartAnonymousChat.ROOTPATH+File.separator+"images"+File.separator+image_byte.hashCode() +".jpeg";
+            BufferedImage image = ImageIO.read( new ByteArrayInputStream( image_byte ) );
+            ImageIO.write(image, "JPEG", new File(path));
+            return path;
+        }
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -88,29 +247,38 @@ public class MainFrame extends javax.swing.JFrame {
         mainPanel = new javax.swing.JPanel();
         roomsPanel = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
-        btnCreateRoom = new javax.swing.JButton();
         panelSubRooms = new javax.swing.JPanel();
+        btnCreateRoom = new javax.swing.JButton();
         btnJoinRoom = new javax.swing.JButton();
         chatPanel = new javax.swing.JPanel();
         panelWrite = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         txtMessage = new javax.swing.JTextArea();
         btnSend = new javax.swing.JButton();
-        btnAllegato = new javax.swing.JButton();
+        btnImage = new javax.swing.JButton();
         panelMessages = new javax.swing.JPanel();
-        scrollPane1 = new java.awt.ScrollPane();
-        lstMessages = new java.awt.List();
+        jScrollPane2 = new javax.swing.JScrollPane();
+        lstMessages = new javax.swing.JList<Message>(listModel);
         panelIntestazioneRoom = new javax.swing.JPanel();
         btnLeaveRoom = new javax.swing.JButton();
+        lblCountdown = new javax.swing.JLabel();
+        lblNumPeer = new javax.swing.JLabel();
         jPanel1 = new javax.swing.JPanel();
         jLabel2 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                formWindowClosing(evt);
+            }
+        });
 
         roomsPanel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
 
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel1.setText("Your Rooms");
+
+        panelSubRooms.setLayout(new java.awt.GridLayout(20, 0));
 
         btnCreateRoom.setIcon(new javax.swing.ImageIcon(getClass().getResource("/plus.png"))); // NOI18N
         btnCreateRoom.setBorder(null);
@@ -119,8 +287,6 @@ public class MainFrame extends javax.swing.JFrame {
                 btnCreateRoomActionPerformed(evt);
             }
         });
-
-        panelSubRooms.setLayout(new java.awt.GridLayout(20, 0));
 
         btnJoinRoom.setIcon(new javax.swing.ImageIcon(getClass().getResource("/join.png"))); // NOI18N
         btnJoinRoom.setBorder(null);
@@ -140,27 +306,28 @@ public class MainFrame extends javax.swing.JFrame {
                         .addContainerGap()
                         .addComponent(panelSubRooms, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                     .addGroup(roomsPanelLayout.createSequentialGroup()
-                        .addGap(42, 42, 42)
-                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 101, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 36, Short.MAX_VALUE)))
+                        .addGroup(roomsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(roomsPanelLayout.createSequentialGroup()
+                                .addGap(50, 50, 50)
+                                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 101, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(roomsPanelLayout.createSequentialGroup()
+                                .addGap(23, 23, 23)
+                                .addComponent(btnCreateRoom, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(36, 36, 36)
+                                .addComponent(btnJoinRoom, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addGap(0, 15, Short.MAX_VALUE)))
                 .addContainerGap())
-            .addGroup(roomsPanelLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(btnCreateRoom, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(btnJoinRoom, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(15, 15, 15))
         );
         roomsPanelLayout.setVerticalGroup(
             roomsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(roomsPanelLayout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(23, 23, 23)
                 .addGroup(roomsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(btnCreateRoom, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnJoinRoom, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 37, Short.MAX_VALUE)
                 .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 24, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(panelSubRooms, javax.swing.GroupLayout.PREFERRED_SIZE, 445, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
@@ -179,8 +346,13 @@ public class MainFrame extends javax.swing.JFrame {
             }
         });
 
-        btnAllegato.setIcon(new javax.swing.ImageIcon(getClass().getResource("/allegato.png"))); // NOI18N
-        btnAllegato.setText("Allegati");
+        btnImage.setIcon(new javax.swing.ImageIcon(getClass().getResource("/image.png"))); // NOI18N
+        btnImage.setText("Image");
+        btnImage.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnImageActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout panelWriteLayout = new javax.swing.GroupLayout(panelWrite);
         panelWrite.setLayout(panelWriteLayout);
@@ -191,49 +363,41 @@ public class MainFrame extends javax.swing.JFrame {
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 422, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(panelWriteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(btnAllegato, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(btnImage, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(btnSend, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         panelWriteLayout.setVerticalGroup(
             panelWriteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(panelWriteLayout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(panelWriteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panelWriteLayout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(panelWriteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(panelWriteLayout.createSequentialGroup()
                         .addComponent(btnSend)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(btnAllegato))
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 65, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(12, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(btnImage))
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 65, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap())
         );
 
-        lstMessages.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                lstMessagesMouseClicked(evt);
-            }
-        });
-        lstMessages.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                lstMessagesActionPerformed(evt);
-            }
-        });
-        scrollPane1.add(lstMessages);
+        lstMessages.setCellRenderer(new MessageRenderer());
+        jScrollPane2.setViewportView(lstMessages);
 
         javax.swing.GroupLayout panelMessagesLayout = new javax.swing.GroupLayout(panelMessages);
         panelMessages.setLayout(panelMessagesLayout);
         panelMessagesLayout.setHorizontalGroup(
             panelMessagesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panelMessagesLayout.createSequentialGroup()
+            .addGroup(panelMessagesLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(scrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 513, Short.MAX_VALUE)
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 521, Short.MAX_VALUE)
                 .addContainerGap())
         );
         panelMessagesLayout.setVerticalGroup(
             panelMessagesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(panelMessagesLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(scrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 392, Short.MAX_VALUE))
+                .addComponent(jScrollPane2)
+                .addContainerGap())
         );
 
         btnLeaveRoom.setIcon(new javax.swing.ImageIcon(getClass().getResource("/leave.png"))); // NOI18N
@@ -251,13 +415,22 @@ public class MainFrame extends javax.swing.JFrame {
             .addGroup(panelIntestazioneRoomLayout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(btnLeaveRoom)
-                .addContainerGap(402, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 158, Short.MAX_VALUE)
+                .addComponent(lblNumPeer, javax.swing.GroupLayout.PREFERRED_SIZE, 78, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(82, 82, 82)
+                .addComponent(lblCountdown, javax.swing.GroupLayout.PREFERRED_SIZE, 78, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
         );
         panelIntestazioneRoomLayout.setVerticalGroup(
             panelIntestazioneRoomLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(panelIntestazioneRoomLayout.createSequentialGroup()
-                .addComponent(btnLeaveRoom)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(panelIntestazioneRoomLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(panelIntestazioneRoomLayout.createSequentialGroup()
+                        .addComponent(btnLeaveRoom)
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addComponent(lblCountdown, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(lblNumPeer, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
         );
 
         javax.swing.GroupLayout chatPanelLayout = new javax.swing.GroupLayout(chatPanel);
@@ -272,7 +445,7 @@ public class MainFrame extends javax.swing.JFrame {
                         .addGroup(chatPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(panelMessages, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(panelIntestazioneRoom, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                        .addContainerGap(36, Short.MAX_VALUE))))
         );
         chatPanelLayout.setVerticalGroup(
             chatPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -280,9 +453,9 @@ public class MainFrame extends javax.swing.JFrame {
                 .addGap(12, 12, 12)
                 .addComponent(panelIntestazioneRoom, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(panelMessages, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
-                .addComponent(panelWrite, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addComponent(panelMessages, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(panelWrite, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
 
         jLabel2.setFont(new java.awt.Font("Chalkboard SE", 1, 13)); // NOI18N
@@ -326,10 +499,8 @@ public class MainFrame extends javax.swing.JFrame {
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(mainPanelLayout.createSequentialGroup()
-                        .addComponent(chatPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 0, Short.MAX_VALUE))
-                    .addComponent(roomsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(roomsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(chatPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
 
@@ -355,116 +526,120 @@ public class MainFrame extends javax.swing.JFrame {
 
     private void btnSendActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSendActionPerformed
         String txt = txtMessage.getText();
-        Message msg=new Message();
-        msg.setType(0);
-        msg.setRoomName(currentRoom);
-        msg.setMsg(txt);
-        lstMessages.add(msg.toString());
-        hmListMessages.get(currentRoom).add(msg);
-        txtMessage.setText("");
-        peer.sendMessage(currentRoom, msg);
-    }//GEN-LAST:event_btnSendActionPerformed
-
-    private void lstMessagesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_lstMessagesActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_lstMessagesActionPerformed
-
-    private void lstMessagesMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_lstMessagesMouseClicked
-        
-    }//GEN-LAST:event_lstMessagesMouseClicked
-
-    private void btnCreateRoomActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCreateRoomActionPerformed
-        String nameRoom= JOptionPane.showInputDialog("Please insert the name of room ");
-        if(nameRoom!=null && !nameRoom.isEmpty()){
-            
-            if(peer.getMyChatList()!=null && peer.getMyChatList().contains(nameRoom)){
-                JOptionPane.showMessageDialog(null, "Room already created");
-            }else{
-                boolean res = peer.createRoom(nameRoom);
-                if(res){
-                    peer.getMyChatList().add(nameRoom);
-
-                    hmListMessages.put(nameRoom, new ArrayList<>());
-
-                    JToggleButton btn = new JToggleButton(nameRoom);
-                    ActionListener listener = new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            setFocusRoom(e.getActionCommand());
-                        }
-                    };
-                    btn.addActionListener(listener);
-                    buttonGroupRooms.add(btn);
-                    panelSubRooms.add(btn);
-                    panelSubRooms.revalidate();
-                    panelSubRooms.repaint();
-                }else{
-                    JOptionPane.showMessageDialog(null, "Error during creation of room "+nameRoom);
-                }
+        if(txt!=null && !txt.isEmpty()){
+            Message msg = new Message();
+            msg.setType(0);
+            msg.setRoomName(currentRoom);
+            msg.setMsg(txt);
+            msg.setDate(Calendar.getInstance().getTime());
+            txtMessage.setText("");
+            String res = peer.sendMessage_(currentRoom, msg);
+            if(res.equalsIgnoreCase("ok")){
+                    msg.setMsg("mymsg_"+msg.getMsg());
+                    listModel.addElement(msg);
+                    if(hmListMessages.get(currentRoom)==null)
+                        hmListMessages.put(currentRoom, new ArrayList<>());
+                    hmListMessages.get(currentRoom).add(msg);
             }
         }
+    }//GEN-LAST:event_btnSendActionPerformed
+
+    private void btnCreateRoomActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCreateRoomActionPerformed
+        createRoom();
     }//GEN-LAST:event_btnCreateRoomActionPerformed
 
     private void btnLeaveRoomActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLeaveRoomActionPerformed
         boolean res = peer.leaveRoom(currentRoom);
-        if(res){
+        if (res) {
             if (buttonGroupRooms != null && buttonGroupRooms.getElements() != null) {
                 Collections.list(buttonGroupRooms.getElements()).stream().forEach((btn) -> {
                     if (btn.getText().equals(currentRoom)) {
-                        peer.leaveNetworkWithoutNotify();
+                        peer.leaveRoom(currentRoom);
                         buttonGroupRooms.remove(btn);
                         panelSubRooms.remove(btn);
                         panelSubRooms.revalidate();
                         panelSubRooms.repaint();
 
                         hmListMessages.remove(currentRoom);
-                        lstMessages.removeAll();
                         currentRoom = null;
                         activatePanelWriterMessages(false);
+                        
+                        panelMessages.remove(lstMessages);
+                        
+                        listModel.removeAllElements();
+                        lstMessages.removeAll();
+                        lstMessages = new JList<>(listModel);
+                        lstMessages.setModel(listModel);
+                        
+                        panelMessages.revalidate();
+                        panelMessages.repaint();
+                        lstMessages.revalidate();
+                        lstMessages.repaint();
+                        
+                        
+                        
                     }
-
                 });
-
             }
-        }else{
-            JOptionPane.showMessageDialog(null, "Error during leaving of room "+currentRoom);
+        } else {
+            JOptionPane.showMessageDialog(null, "Error during leaving of room " + currentRoom);
         }
-        
-        
-        
     }//GEN-LAST:event_btnLeaveRoomActionPerformed
 
     private void btnJoinRoomActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnJoinRoomActionPerformed
-        //Code for join in room
-        String nameRoom = JOptionPane.showInputDialog("Please insert the name of room ");
-        if (nameRoom != null && !nameRoom.isEmpty()) {
-            if (peer.getMyChatList() != null && peer.getMyChatList().contains(nameRoom)) {
-                JOptionPane.showMessageDialog(null, "Room already created");
-            } else {
-                boolean res = peer.joinRoom(nameRoom);
-                if (res) {
-                    hmListMessages.put(nameRoom, new ArrayList<>());
-                    JToggleButton btn = new JToggleButton(nameRoom);
-                    ActionListener listener = new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            setFocusRoom(e.getActionCommand());
-                        }
-                    };
-                    btn.addActionListener(listener);
-                    buttonGroupRooms.add(btn);
-                    panelSubRooms.add(btn);
-                    panelSubRooms.revalidate();
-                    panelSubRooms.repaint();
-
-                } else {
-                    JOptionPane.showMessageDialog(null, "Error during joining in room " + nameRoom);
-                }
-            }
-        } else {
-            JOptionPane.showMessageDialog(null, "Room name cannot be null " + nameRoom);
-        }
+        joinRoom();
+        
     }//GEN-LAST:event_btnJoinRoomActionPerformed
+
+    private void btnImageActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnImageActionPerformed
+        try {
+            String path_img=null;
+            try {
+                final JFileChooser fc = new JFileChooser();
+                fc.setCurrentDirectory(new File(System.getProperty("user.home")));
+                FileFilter imageFilter = new FileNameExtensionFilter("Image files", ImageIO.getReaderFileSuffixes());
+                fc.setFileFilter(imageFilter);
+                int returnVal = fc.showOpenDialog(this);
+
+                if (returnVal == JFileChooser.APPROVE_OPTION) {
+                    File file = fc.getSelectedFile();
+                    path_img=file.getAbsolutePath();
+                }
+            } catch (Exception e) {
+            }
+            
+            
+            String txt = "";
+            Message msg = new Message();
+            msg.setType(1);
+            msg.setRoomName(currentRoom);
+            msg.setMsg(txt);
+            msg.setDate(Calendar.getInstance().getTime());
+
+            BufferedImage image = ImageIO.read(new File(path_img));
+            image = ImageCompressor.resizeImage(image, 128, 128);
+            byte[] newimg = ImageCompressor.compressImageInJpeg(image, 0.8f);
+            msg.setImage(newimg);
+            msg.setName_file(writeImgOnDisk(newimg));
+
+            hmListMessages.get(currentRoom).add(msg);
+            
+            String res = peer.sendMessage_(currentRoom, msg);
+            if(res.equalsIgnoreCase("ok")){
+                    msg.setMsg("mymsg_"+msg.getMsg());
+                    listModel.addElement(msg);
+                    if(hmListMessages.get(currentRoom)==null)
+                        hmListMessages.put(currentRoom, new ArrayList<>());
+                    hmListMessages.get(currentRoom).add(msg);
+            }
+        } catch (IOException ex) {
+            Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_btnImageActionPerformed
+
+    private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
+        peer.leaveNetwork();
+    }//GEN-LAST:event_formWindowClosing
 
     /**
      * @param args the command line arguments
@@ -498,18 +673,18 @@ public class MainFrame extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
-                    new MainFrame("127.0.0.1",1).setVisible(true);
+                    new MainFrame("127.0.0.1", 0).setVisible(true);
                 } catch (Exception ex) {
                     Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
-            
+
         });
     }
-    
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnAllegato;
     private javax.swing.JButton btnCreateRoom;
+    private javax.swing.JButton btnImage;
     private javax.swing.JButton btnJoinRoom;
     private javax.swing.JButton btnLeaveRoom;
     private javax.swing.JButton btnSend;
@@ -518,35 +693,116 @@ public class MainFrame extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel2;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;
-    private java.awt.List lstMessages;
+    private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JLabel lblCountdown;
+    private javax.swing.JLabel lblNumPeer;
+    private javax.swing.JList<Message> lstMessages;
     private javax.swing.JPanel mainPanel;
     private javax.swing.JPanel panelIntestazioneRoom;
     private javax.swing.JPanel panelMessages;
     private javax.swing.JPanel panelSubRooms;
     private javax.swing.JPanel panelWrite;
     private javax.swing.JPanel roomsPanel;
-    private java.awt.ScrollPane scrollPane1;
     private javax.swing.JTextArea txtMessage;
     // End of variables declaration//GEN-END:variables
-
-
 
     private void activatePanelWriterMessages(boolean state) {
         txtMessage.setEnabled(state);
         panelMessages.setEnabled(state);
-        btnAllegato.setEnabled(state);
+        btnImage.setEnabled(state);
         btnSend.setEnabled(state);
         btnLeaveRoom.setEnabled(state);
-    }
+        lblCountdown.setText("");
+        lblCountdown.setEnabled(state);
+        if (timerCountdown != null) {
+            timerCountdown.stop();
+        }
 
+    }
 
     private void setFocusRoom(String roomName) {
         activatePanelWriterMessages(true);
-        currentRoom=roomName;
+        currentRoom = roomName;
         List<Message> lstMsg = hmListMessages.get(roomName);
         lstMessages.removeAll();
-        for (Message msg : lstMsg) {
-            lstMessages.add(msg.toString());
+
+        listModel.removeAllElements();
+
+        for (Message message : lstMsg) {
+            listModel.addElement(message);
+        }
+        lstMessages = new JList<>(listModel);
+        lstMessages.setModel(listModel);
+        Chat chatRoom = peer.getChatRoom(roomName);
+        //Chat temporizzata
+        if (chatRoom != null && chatRoom.getEndChat() != null) {
+            activateCountdown(chatRoom.getEndChat());
+        }
+
+    }
+
+    private void activateCountdown(Date endDate) {
+        ActionListener updateClockAction = (ActionEvent e) -> {
+            Calendar c = Calendar.getInstance();
+            long seconds = differenceDateInSeconds(c.getTime(), endDate);
+            if (seconds > 0) {
+                lblCountdown.setText(formatSecondsIn_sTime(seconds));
+            } else {
+                lblCountdown.setText("0:00:00");
+            }
+            Font font = new Font("Courier", Font.BOLD, 12);
+            lblCountdown.setFont(font);
+        };
+        timerCountdown = new javax.swing.Timer(1000, updateClockAction);
+        timerCountdown.start();
+    }
+
+    private void scheduleCheckExistencyChat(Chat chat) {
+        if (chat != null && chat.getEndChat() != null) {
+            //timer
+            TimerTask task = new TimerTask() {
+                @Override
+                public void run() {
+                    System.out.println("Run Task for chat room *GUI* " + chat.getRoomName());
+                    if (peer.getChatRoom(chat.getRoomName()) == null) {
+                        if (buttonGroupRooms != null && buttonGroupRooms.getElements() != null) {
+                            Collections.list(buttonGroupRooms.getElements()).stream().forEach((btn) -> {
+                                if (btn.getText().equalsIgnoreCase(chat.getRoomName())) {
+                                    System.out.println("a1");
+                                    buttonGroupRooms.remove(btn);
+                                    panelSubRooms.remove(btn);
+                                    panelSubRooms.revalidate();
+                                    panelSubRooms.repaint();
+
+                                    hmListMessages.remove(chat.getRoomName());
+
+                                    JOptionPane.showMessageDialog(null, "Room deleted " + chat.getRoomName());
+                                    
+                                    if (currentRoom == chat.getRoomName()) {
+                                        listModel.removeAllElements();
+                                        lstMessages.removeAll();
+                                        lstMessages = new JList<>(listModel);
+                                        lstMessages.setModel(listModel);
+                                        currentRoom = null;
+                                        
+                                        activatePanelWriterMessages(false);
+                                        panelMessages.revalidate();
+                                        panelMessages.repaint();
+                                        
+                                        lstMessages.revalidate();
+                                        lstMessages.repaint();
+                                        
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+            };
+            Timer timer = new Timer("timerSc");
+            long diff_sec = UtilDate.differenceDateInSeconds(Calendar.getInstance().getTime(), chat.getEndChat());
+            timer.schedule(task, (1000 * (diff_sec)) + ((peer.getPeerId() + 1) * 3000));
         }
     }
+
 }

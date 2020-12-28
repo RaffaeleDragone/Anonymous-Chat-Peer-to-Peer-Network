@@ -1,22 +1,23 @@
 package it.unisa.p2p.beans;
 
-import net.tomp2p.p2p.Peer;
 import net.tomp2p.peers.PeerAddress;
 
 import java.io.Serializable;
+import java.util.Date;
 import java.util.HashSet;
-import java.util.List;
 
 public class Chat implements Serializable {
     private String roomName;
     private HashSet<PeerAddress> users;
+    private Date endChat;
 
     public Chat(){
     }
 
-    public Chat(String roomName,HashSet<PeerAddress> users){
+    public Chat(String roomName,HashSet<PeerAddress> users,Date endChat){
         this.roomName=roomName;
         this.users=users;
+        this.endChat=endChat;
     }
 
     public String getRoomName() {
@@ -44,6 +45,16 @@ public class Chat implements Serializable {
         if(this.users==null)
             this.users=new HashSet<>();
         this.users.add(user);
+    }
+
+    
+
+    public Date getEndChat() {
+        return endChat;
+    }
+
+    public void setEndChat(Date endChat) {
+        this.endChat = endChat;
     }
 
 

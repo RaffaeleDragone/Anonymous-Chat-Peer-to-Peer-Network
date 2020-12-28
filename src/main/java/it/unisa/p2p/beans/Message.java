@@ -6,6 +6,7 @@
 package it.unisa.p2p.beans;
 
 import java.io.Serializable;
+import java.util.Date;
 
 /**
  *
@@ -14,11 +15,24 @@ import java.io.Serializable;
 public class Message implements Serializable{
     int type;
     String msg;
-    String infoMsg;
     String roomName;
+    Date date;
+    byte[] image;
+    String name_file;
 
     public Message() {
     }
+
+    public Message(int type, String msg, String roomName, Date date, byte[] image, String name_file) {
+        this.type = type;
+        this.msg = msg;
+        this.roomName = roomName;
+        this.date = date;
+        this.image = image;
+        this.name_file = name_file;
+    }
+    
+    
 
     public int getType() {
         return type;
@@ -36,17 +50,10 @@ public class Message implements Serializable{
         this.msg = msg;
     }
 
-    public String getInfoMsg() {
-        return infoMsg;
-    }
-
-    public void setInfoMsg(String infoMsg) {
-        this.infoMsg = infoMsg;
-    }
 
     @Override
     public String toString() {
-        return "Message{" + "type=" + type + ", msg=" + msg + ", infoMsg=" + infoMsg + '}';
+        return msg;
     }
 
     public String getRoomName() {
@@ -56,6 +63,32 @@ public class Message implements Serializable{
     public void setRoomName(String roomName) {
         this.roomName = roomName;
     }
+
+    public Date getDate() {
+        return date;
+    }
+
+    public void setDate(Date date) {
+        this.date = date;
+    }
+
+    public byte[] getImage() {
+        return image;
+    }
+
+    public void setImage(byte[] image) {
+        this.image = image;
+    }
+
+    public String getName_file() {
+        return name_file;
+    }
+
+    public void setName_file(String name_file) {
+        this.name_file = name_file;
+    }
+
+    
     
     
     

@@ -1,7 +1,7 @@
 package it.unisa.p2p.testmain;
 
-import it.unisa.p2p.chat.AnonymousChatImplOld;
-import it.unisa.p2p.chat.AnonymousChatUser;
+
+import it.unisa.p2p.gui.ConsoleChat;
 import it.unisa.p2p.gui.MainFrame;
 import it.unisa.p2p.interfaces.MessageListener;
 
@@ -21,11 +21,40 @@ public class TestFunction {
     }
 
     public static void main(String[] args) throws Exception {
-        MainFrame m1=new MainFrame("127.0.0.1", 0);
-        m1.setVisible(true);
+          ConsoleChat console=new ConsoleChat("127.0.0.1", 0);
+          ConsoleChat console2=new ConsoleChat("127.0.0.1", 1);
+          
+//        MainFrame m1=new MainFrame("127.0.0.1", 0);
+//        m1.setVisible(true);
+//        
+//        MainFrame m2=new MainFrame("127.0.0.1", 1);
+//        m2.setVisible(true);
         
-        MainFrame m2=new MainFrame("127.0.0.1", 1);
-        m2.setVisible(true);
+//        MainFrame m3=new MainFrame("127.0.0.1", 2);
+//        m3.setVisible(true);
+//        
+//        MainFrame m4=new MainFrame("127.0.0.1", 3);
+//        m4.setVisible(true);
+//        
+//        MainFrame m5=new MainFrame("127.0.0.1", 4);
+//        m5.setVisible(true);
+//        
+//        MainFrame m6=new MainFrame("127.0.0.1", 5);
+//        m6.setVisible(true);
+//        
+//        MainFrame m7=new MainFrame("127.0.0.1", 6);
+//        m7.setVisible(true);
+//        
+//        MainFrame m8=new MainFrame("127.0.0.1", 7);
+//        m8.setVisible(true);
+//        
+//        MainFrame m9=new MainFrame("127.0.0.1", 8);
+//        m9.setVisible(true);
+//        
+//        MainFrame m10=new MainFrame("127.0.0.1", 9);
+//        m10.setVisible(true);
+        
+        
         
 //        AnonymousChatImplOld peer0 = new AnonymousChatImplOld(0, "127.0.0.1", new MessageListenerImpl(0));
 //        AnonymousChatImplOld peer1 = new AnonymousChatImplOld(1, "127.0.0.1", new MessageListenerImpl(1));

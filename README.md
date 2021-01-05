@@ -1,8 +1,6 @@
 # Anonymous-Chat Peer-to-Peer Network
 
-
-
-![N-Body](https://s3.amazonaws.com/lowres.cartoonstock.com/telecommunications-chatting-chatroom-chatting_over_the_fence-neighbour-gossip-gri0032_low.jpg)
+<img src="https://s3.amazonaws.com/lowres.cartoonstock.com/telecommunications-chatting-chatroom-chatting_over_the_fence-neighbour-gossip-gri0032_low.jpg" alt="Welcome" style="zoom:50%;"/>
 
 **Candidato** : *Dragone Raffaele*
 
@@ -15,21 +13,26 @@
 # Sommario.
 
 1. Presentazione della soluzione proposta
+
 2. Tecnologie utilizzate
+
 3. Esposizione della struttura del progetto
+
+   3.1 Descrizione del codice
 
 4. Test Cases
 
 5. Dipendenze
-6. Docker
-7. Demo
-8. Conclusioni
+
+6. Demo
+
+7. Docker
 
 #  1. Presentazione della soluzione proposta
 
-Anonymoys-chat è un programma di messaggistica istantanea peer-to-peer (p2p) anonimo. Ciò significa che in fase di avvio il programma non richiederà alcuna registrazione utente.
+Anonymous-chat è un programma di messaggistica istantanea peer-to-peer (p2p) anonimo. Ciò significa che in fase di avvio il programma non richiederà alcuna registrazione utente.
 
-L'obiettivo principale dello sviluppo di questo programma di messaggistica istantanea è fornire la privacy che si ottiene utilizzando l'anonimato.
+L'obiettivo principale dello sviluppo del progetto è fornire la privacy che si ottiene utilizzando l'anonimato.
 
 Può essere utilizzato per la messaggistica istantanea e il trasferimento di immagini con supporto per chat private e chat di gruppo.
 
@@ -37,17 +40,17 @@ In anonymous-chat ogni utente ( peer ) può inviare messaggi in una chat pubblic
 
 Sono state fornite delle api ben definite che consentono ad ogni utente di : 
 
-1. Creare una nuova Stanza.
-2. Entrare in una stanza già creata.
-3. Lasciare una stanza.
+1. Creare una nuova room.
+2. Entrare in una room esistente.
+3. Lasciare una room.
 4. Inviare messaggi testuali.
 
 Oltre a tali funzionalità, ne sono state aggiunte ulteriori, quali : 
 
-1. Creare una stanza temporizzata specificando il tempo di vita della chat in minuti.
+1. Creare una room temporizzata specificando il tempo in minuti.
 2. Inviare messaggi contenenti immagini.
 
-Inoltre per dare una maggiore semplicità di utilizzo, oltre alla classica implementazione tramite console, è stata sviluppata una GUI in java swing.
+Inoltre, per dare una maggiore semplicità di utilizzo, oltre alla classica implementazione tramite console, è stata sviluppata una GUI in java swing.
 
 Anonymous-chat fa utilizzo della DHT per memorizzare informazioni relative ad ogni chat creata, contenente oltre all'eventuale orario di scadenza , il numero di utenti che partecipano ad essa.
 
@@ -62,7 +65,7 @@ Per quanto riguarda l'invio di messaggi testuali, il sender non fa altro che pre
 Per quanto riguarda l'invio di messaggi contenenti immagini invece, al fine di sfruttare il potenziale della rete p2p e di non sovraccaricare troppo il sender con l'eventuale mole di ricevitori che potrebbe presentarsi, e' stato implementato un algoritmo che , distribuendo in modo equo il numero di immagini da inviare, rende partecipi un certo numero di ricevitori nella fase di invio della immagine stessa tramite un meccanismo di Forward dei messaggi.
 In questo modo, l'utente che dovrà inviare una immagine non la invierà a tutti gli utenti di una chat in modo diretto, ma soltanto ad alcuni di essi, i quali provvederanno ad inoltrare l'immagine al restante numero di ricevitori.
 
-#  3. Tecnologie utilizzate
+#  2. Tecnologie utilizzate
 
 - **Linguaggio di programmazione**: Java 8
 - **DHT management**: TOM P2P v5.0
@@ -140,7 +143,7 @@ public class ImageWrapper implements Serializable{
 La classe ImageWrapper svolge un ruolo chiave durante l'invio di messaggi contenenti immagini.
 
 Tale classe incapsula al suo interno un oggetto Message, ed aggiunge ad esso una lista di ricevitori. 
-Durante la fase di invio di immagini, verrà istanziato un oggetto di tipo ImageWrapper per ognuno degli n peer che parteciperanno all'invio, contenente ognuno di essi un sottoinsieme di ricevitori del messaggio.
+Durante la fase di invio di immagini, verrà istanziato un oggetto di tipo ImageWrapper per ognuno degli n peer che parteciperanno all'invio, contenente un sottoinsieme di ricevitori del messaggio.
 
 ## 3.1 Descrizione del codice
 
@@ -642,7 +645,7 @@ E' possibile ottenere risultati da un oggetto Future in due modi :
 - In modo bloccante, utilizzando su di esso funzioni come await() o awaitUninterruptibly()
 - In modo non bloccante, aggiungendo un listener che viene chiamato quando il risultato risulta essere pronto.
 
-In alcuni casi potrebbe essere utile utilizzare un listener in quanto quest'ultimo verrà chiamato in ogni caso , anche nel caso in cui l'operazione vada in deadlock in quanto c'è un timeout che attiva il listener.
+In alcuni casi potrebbe essere utile utilizzare un listener in quanto quest'ultimo verrà chiamato in ogni caso , anche nel caso peggiore (deadlock)  in quanto c'è un timeout che attiva il listener.
 
 A tal proposito è stato implementato un custom listener utilizzato durante l'invio dei messaggi. In questo modo il peer che deve inviare un messaggio a diversi users di una chat può procedere con l'invio di questi ultimi senza attendere risposta sul main thread.
 
@@ -718,7 +721,67 @@ In caso negativo, raggiunta la soglia limite di 2 tentativi, il peer ricevitore 
 Per quanto riguarda l'invio di messaggi contenenti immagini è stata utilizzata una tecnica diversa dall'invio di messaggi di testo, più nello specifico : 
 
 - Per l'invio di messaggi di testo il peer sender invia un messaggio diretto ad ogni utente della chat.
-- Per l'invio di messaggi contenenti immagini l'invio da parte del sender a tutti gli utenti della chat potrebbe essere troppo oneroso, ed è quindi stato implementato un meccanismo che permetta di sfruttare il potenziale di una rete peer-to-peer , rendendo partecipi all'invio della immagine anche alcuni peer ricevitori, distribuendo il numero di messaggi totali da inviare in modo equo ( anche se un leggero carico maggiore da parte del sender iniziale ).
+- Per l'invio di messaggi contenenti immagini da parte del sender a tutti gli utenti della chat potrebbe essere troppo oneroso, ed è quindi stato implementato un meccanismo che permetta di sfruttare il potenziale di una rete peer-to-peer , rendendo partecipi all'invio della immagine anche alcuni peer ricevitori, distribuendo il numero di messaggi totali da inviare in modo equo ( anche se con un leggero carico maggiore da parte del sender iniziale ).
+
+```java
+HashSet<PeerAddress> receivers = currentChat.getUsers();
+            ImageWrapper msgWrapper = new ImageWrapper();
+            msgWrapper.setMsg(msg);
+
+            receivers.remove(_dht.peer().peerAddress());//Rimuove il peer che invia il messaggio dalla lista di receivers
+            int n_msg = receivers.size();//Num messaggi totali da inviare
+            if (n_msg > 3) {//Se i messaggi da inviare sono <=3 effettua send direct ad ognuno
+                int msg_each_peer = (int) (Math.log(n_msg) / Math.log(2));//Individua in modo equo il numero di messaggi che dovrebbe inviare ogni peer per creare una distribuzione equa
+                int senders = n_msg / msg_each_peer;//Calcola il numero di receivers che parteciperanno all'invio della immagine
+
+                Iterator<PeerAddress> it = receivers.iterator();
+                for (int i = 0, j = 0; i < senders && it.hasNext(); ++i) { // assegna un imageWrapper ad ogni nuovo sender
+                    int rest = n_msg - (msg_each_peer * senders);
+                    int m = msg_each_peer - 1;//rimuove 1 messaggio ad ogni peer poiché tale messaggio sarà contenuto nel wrapper inviato dal peer "master" al peer corrente
+                    if (rest > 0 && i < rest) {
+                        ++m;
+                    }
+
+                    PeerAddress snd = it.next();
+                    if (snd.equals(_dht.peer().peerAddress())) {
+                        snd = it.next();
+                    }
+                    msgWrapper.setReceivers(new HashSet<>());
+                    for (int x = 0; x < m && it.hasNext(); ++x) {
+                        msgWrapper.getReceivers().add(it.next());//Aggiunge i receivers nell'imageWrapper
+                    }
+
+                    prepareAndSendWrapper(snd, msgWrapper);
+
+                }
+```
+
+```java
+/*
+    Tale metodo ricorsivo effettua l'invio dell'imageWrapper ad uno specifico sender, se presente.
+     */
+    private void prepareAndSendWrapper(PeerAddress snd, ImageWrapper msgWrapper) {
+        if (snd != null && msgWrapper != null) {
+            HashSet<PeerAddress> receivers = msgWrapper.getReceivers();
+            if (receivers == null || receivers.size() == 0) {//Se non ci sono receivers
+                //Send normal msg perchè è l'unico che riceve, non deve fare il forward
+                FutureDirect futureDirect = _dht.peer().sendDirect(snd).object(msgWrapper.getMsg()).start();
+                futureDirect.awaitUninterruptibly();
+            } else {
+                //CI sono receivers
+                FutureDirect futureDirect = _dht.peer().sendDirect(snd).object(msgWrapper).start();
+                futureDirect.awaitUninterruptibly();
+
+                if (futureDirect.isFailed()) {//Se il messaggio non è arrivato a destinazione
+                    PeerAddress nextSender = receivers.iterator().next();//Sceglie il prossimo sender per esclusione
+                    receivers.remove(nextSender);//Rimuove il nuovo sender dai vecchi receivers
+                    prepareAndSendWrapper(nextSender, msgWrapper);
+                }
+            }
+        }
+
+    }
+```
 
 Per implementare tale meccanismo , all'interno del metodo peer.objectDataReply(...) richiamato ogni qualvolta un peer riceve un messaggio, viene verificato il tipo di messaggio ricevuto. 
 Nel caso in cui il messaggio ricevuto sia istanza della classe "ImageWrapper", contenente quindi una lista di receivers oltre al messaggio stesso, il peer si impegnerà nell'inoltrare il messaggio ricevuto alla lista dei receivers stessi.
@@ -736,8 +799,6 @@ peer.objectDataReply(new ObjectDataReply() {
             }
         });
 ```
-
-L'invio dei messaggi è stato implementato in modo non bloccante, evitando di richiamare la funzione awaitUninterruptibly() , utilizzando un listener implementato ad hoc.
 
 Altra nota importante è la compressione della immagine in jpeg ,mantenendo comunque una qualità alta, che viene effettuata in fase di invio della immagine nelle classi di controllo (MainFrame.java, Console.java) al fine di ridurre il peso dei messaggi da inviare.
 
@@ -1167,7 +1228,7 @@ public class TestAnonymousChatImpl {
 }
 ```
 
-# 4. Dipendenze
+# 5. Dipendenze
 
 ```xml
 <dependencies>
@@ -1230,7 +1291,7 @@ Welcome Home
 
 
 
-#  5. Docker
+#  7. Docker
 
 Di seguito il Dockerfile dell'applicativo Anonymous-chat
 

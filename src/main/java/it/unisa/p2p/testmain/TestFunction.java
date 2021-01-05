@@ -1,29 +1,68 @@
 package it.unisa.p2p.testmain;
 
 
-import it.unisa.p2p.gui.ConsoleChat;
-import it.unisa.p2p.gui.MainFrame;
+import it.unisa.p2p.beans.Message;
+import it.unisa.p2p.beans.ImageWrapper;
+import it.unisa.p2p.chat.AnonymousChatImpl;
 import it.unisa.p2p.interfaces.MessageListener;
+import it.unisa.p2p.utils.ImageCompressor;
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TestFunction {
 
     static class MessageListenerImpl implements MessageListener {
         int peerid;
-        public MessageListenerImpl(int peerid)
+        public MessageListenerImpl(int peerid, AnonymousChatImpl peer)
         {
             this.peerid=peerid;
         }
         public Object parseMessage(Object obj) {
-            System.out.println(peerid+"] (Direct Message Received) "+obj);
-            return "success";
+            System.out.println(peers[peerid]);
+            if (obj instanceof Message) {
+                System.out.println("Instance of message");
+                Message msg = (Message) obj;
+                return msg;
+            } else if (obj instanceof ImageWrapper) {
+                System.out.println("Instance of image");
+                ImageWrapper msgWrap = (ImageWrapper) obj;
+                return msgWrap;
+            }
+            return null;
         }
 
     }
-
+    static AnonymousChatImpl[] peers;
     public static void main(String[] args) throws Exception {
-          ConsoleChat console=new ConsoleChat("127.0.0.1", 0);
-          ConsoleChat console2=new ConsoleChat("127.0.0.1", 1);
-          
+          //ConsoleChat console=new ConsoleChat("127.0.0.1", 0);
+          //ConsoleChat console2=new ConsoleChat("127.0.0.1", 1);
+          int n_peer=50;
+          peers=new AnonymousChatImpl[n_peer];
+          for(int i=0;i<n_peer;++i){
+            peers[i]=new AnonymousChatImpl(i,"127.0.0.1",new MessageListenerImpl(i,peers[i]));
+          }
+          peers[0].createRoom("Room1");
+          for(int i=1;i<n_peer;++i){
+              peers[i].joinRoom_("Room1");
+          }
+
+        //Image Message
+        Message msg=new Message();
+
+        msg.setType(1);
+        msg.setMsg("");
+        BufferedImage image = ImageIO.read(new File("images"+ File.separator+"0.png"));
+        image = ImageCompressor.resizeImage(image, 128, 128);
+        byte[] newimg = ImageCompressor.compressImageInJpeg(image, 0.8f);
+        msg.setImage(newimg);
+        msg.setRoomName("Room1");
+
+
+        peers[0].sendMessage_("Room1",msg);
 //        MainFrame m1=new MainFrame("127.0.0.1", 0);
 //        m1.setVisible(true);
 //        

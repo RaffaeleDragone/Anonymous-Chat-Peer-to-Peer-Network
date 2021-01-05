@@ -31,9 +31,6 @@ public class Message implements Serializable{
         this.image = image;
         this.name_file = name_file;
     }
-    
-    
-
     public int getType() {
         return type;
     }
@@ -49,7 +46,6 @@ public class Message implements Serializable{
     public void setMsg(String msg) {
         this.msg = msg;
     }
-
 
     @Override
     public String toString() {
@@ -88,10 +84,4 @@ public class Message implements Serializable{
         this.name_file = name_file;
     }
 
-    
-    
-    
-    
-    
-    
 }

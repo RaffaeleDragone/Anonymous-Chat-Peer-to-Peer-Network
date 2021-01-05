@@ -7,21 +7,19 @@ package it.unisa.p2p.gui;
 
 import it.unisa.p2p.beans.Chat;
 import it.unisa.p2p.beans.Message;
-import it.unisa.p2p.beans.MessageWrapper;
-import it.unisa.p2p.chat.AnonymousChatUser;
-import it.unisa.p2p.chat.StartAnonymousChat;
+import it.unisa.p2p.beans.ImageWrapper;
+import it.unisa.p2p.chat.AnonymousChatImpl;
 
 import it.unisa.p2p.interfaces.MessageListener;
 import it.unisa.p2p.utils.ImageCompressor;
 import it.unisa.p2p.utils.UtilDate;
 import static it.unisa.p2p.utils.UtilDate.differenceDateInSeconds;
 import static it.unisa.p2p.utils.UtilDate.formatSecondsIn_sTime;
-import java.awt.Color;
+
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,7 +28,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -43,11 +40,8 @@ import javax.swing.JFileChooser;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JToggleButton;
-import javax.swing.border.LineBorder;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import net.tomp2p.peers.Number160;
-import net.tomp2p.peers.PeerAddress;
 
 /**
  *
@@ -61,7 +55,7 @@ public class MainFrame extends javax.swing.JFrame {
     ButtonGroup buttonGroupRooms = new ButtonGroup();
     HashMap<String, List<Message>> hmListMessages = new HashMap<>();
     String currentRoom = null;
-    AnonymousChatUser peer;
+    AnonymousChatImpl peer;
 
     //create the model and add elements
     DefaultListModel<Message> listModel = new DefaultListModel<>();
@@ -74,11 +68,12 @@ public class MainFrame extends javax.swing.JFrame {
     }
 
     public MainFrame(String master, int id) throws Exception {
-        peer = new AnonymousChatUser(id, master, new MessageListenerImpl(id));
+        peer = new AnonymousChatImpl(id, master, new MessageListenerImpl(id));
         initComponents();
         activatePanelWriterMessages(false);
         lblNumPeer.setText(id + "");
-        //this.setResizable(false);
+        this.setResizable(false);
+        lblNumPeer.setVisible(false);
     }
 
     private void createRoom() {
@@ -142,8 +137,9 @@ public class MainFrame extends javax.swing.JFrame {
             if (peer.getMyChatList() != null && peer.getMyChatList().contains(nameRoom)) {
                 JOptionPane.showMessageDialog(null, "Room already created");
             } else {
-                boolean res = peer.joinRoom(nameRoom);
-                if (res) {
+                String res = peer.joinRoom_(nameRoom);
+                //boolean res = peer.joinRoom(nameRoom);
+                if (res!=null && res.equals("ok")) {
                     hmListMessages.put(nameRoom, new ArrayList<>());
                     JToggleButton btn = new JToggleButton(nameRoom);
                     ActionListener listener = new ActionListener() {
@@ -158,12 +154,13 @@ public class MainFrame extends javax.swing.JFrame {
                     panelSubRooms.revalidate();
                     panelSubRooms.repaint();
 
-                    Chat chat = peer.getChatRoom(nameRoom);
+                    Chat chat = peer.findChatRoom(nameRoom);
                     if (chat.getEndChat() != null) {
                         scheduleCheckExistencyChat(chat);
                     }
                 } else {
-                    JOptionPane.showMessageDialog(null, "Error during joining in room " + nameRoom);
+
+                    JOptionPane.showMessageDialog(null, "Error during joining in room " + nameRoom+" "+res!=null && !res.equals("ko") ? res : "");
                 }
             }
         } else {
@@ -177,64 +174,30 @@ public class MainFrame extends javax.swing.JFrame {
 
         public MessageListenerImpl(int peerid) {
             this.peerid = peerid;
-
         }
-
-        public String parseMessage(Object obj) {
+        public Object parseMessage(Object obj) {
             Message msg=null;
+            ImageWrapper msgWrap=null;
             if (obj instanceof Message) {
-                System.out.println("Instance of message");
                 msg = (Message) obj;
-            } else if (obj instanceof MessageWrapper) {
-                System.out.println("Instance of messageWrapper, received by peer : "+peerid);
-                MessageWrapper msgWrap = (MessageWrapper) obj;
-                msg = msgWrap.getMsg();
-                peer.forwardImageMessage(msg, msgWrap.getReceivers());
+            } else if (obj instanceof ImageWrapper) {
+                msgWrap = (ImageWrapper) obj;
+                msg=msgWrap.getMsg();
             }
 
-            if(msg.getType()==1){
-                try {
-                    String name = writeImgOnDisk(msg.getImage());
-                    msg.setName_file(name);
-                    msg.setImage(null);
-                } catch (IOException ex) {
-                    Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            }
-            
             if (msg != null && msg.getRoomName() != null) {
                 if (hmListMessages.get(msg.getRoomName()) != null) {
                     hmListMessages.get(msg.getRoomName()).add(msg);
                     if (msg.getRoomName().equalsIgnoreCase(currentRoom)) {
                         listModel.addElement(msg);
                     }
-                    //JOptionPane.showMessageDialog(null, "[message Received]Message received in room : " + msg.getRoomName());
                 }
             }
-
-            return "ok";
-        }
-
-        
-
-        
-    }
-    
-    private void notifyGuiRoom(String roomName) {
-           if (buttonGroupRooms != null && buttonGroupRooms.getElements() != null) {
-            Collections.list(buttonGroupRooms.getElements()).stream().forEach((btn) -> {
-                if (btn.getText().equalsIgnoreCase(roomName)) {
-                    btn.setBorder(new LineBorder(Color.BLACK));
-                }
-            });
+            if(msgWrap!=null) return msgWrap;
+            if(msg!=null) return msg;
+            return null;
         }
     }
-    private String writeImgOnDisk( byte[] image_byte) throws IOException {
-            String path=StartAnonymousChat.ROOTPATH+File.separator+"images"+File.separator+image_byte.hashCode() +".jpeg";
-            BufferedImage image = ImageIO.read( new ByteArrayInputStream( image_byte ) );
-            ImageIO.write(image, "JPEG", new File(path));
-            return path;
-        }
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -363,8 +326,8 @@ public class MainFrame extends javax.swing.JFrame {
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 422, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(panelWriteLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(btnImage, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(btnSend, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(btnSend, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(btnImage, javax.swing.GroupLayout.DEFAULT_SIZE, 104, Short.MAX_VALUE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         panelWriteLayout.setVerticalGroup(
@@ -389,8 +352,8 @@ public class MainFrame extends javax.swing.JFrame {
             panelMessagesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(panelMessagesLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 521, Short.MAX_VALUE)
-                .addContainerGap())
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 540, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         panelMessagesLayout.setVerticalGroup(
             panelMessagesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -415,11 +378,10 @@ public class MainFrame extends javax.swing.JFrame {
             .addGroup(panelIntestazioneRoomLayout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(btnLeaveRoom)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 158, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(lblNumPeer, javax.swing.GroupLayout.PREFERRED_SIZE, 78, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(82, 82, 82)
-                .addComponent(lblCountdown, javax.swing.GroupLayout.PREFERRED_SIZE, 78, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+                .addGap(88, 88, 88)
+                .addComponent(lblCountdown, javax.swing.GroupLayout.PREFERRED_SIZE, 78, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
         panelIntestazioneRoomLayout.setVerticalGroup(
             panelIntestazioneRoomLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -442,10 +404,10 @@ public class MainFrame extends javax.swing.JFrame {
                 .addGroup(chatPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(panelWrite, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(chatPanelLayout.createSequentialGroup()
-                        .addGroup(chatPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(panelMessages, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(panelIntestazioneRoom, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addContainerGap(36, Short.MAX_VALUE))))
+                        .addGroup(chatPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(panelMessages, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(panelIntestazioneRoom, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addContainerGap(17, Short.MAX_VALUE))))
         );
         chatPanelLayout.setVerticalGroup(
             chatPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -549,12 +511,13 @@ public class MainFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_btnCreateRoomActionPerformed
 
     private void btnLeaveRoomActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLeaveRoomActionPerformed
+       
         boolean res = peer.leaveRoom(currentRoom);
         if (res) {
             if (buttonGroupRooms != null && buttonGroupRooms.getElements() != null) {
                 Collections.list(buttonGroupRooms.getElements()).stream().forEach((btn) -> {
                     if (btn.getText().equals(currentRoom)) {
-                        peer.leaveRoom(currentRoom);
+                        //peer.leaveRoom(currentRoom);
                         buttonGroupRooms.remove(btn);
                         panelSubRooms.remove(btn);
                         panelSubRooms.revalidate();
@@ -620,10 +583,7 @@ public class MainFrame extends javax.swing.JFrame {
             image = ImageCompressor.resizeImage(image, 128, 128);
             byte[] newimg = ImageCompressor.compressImageInJpeg(image, 0.8f);
             msg.setImage(newimg);
-            msg.setName_file(writeImgOnDisk(newimg));
 
-            hmListMessages.get(currentRoom).add(msg);
-            
             String res = peer.sendMessage_(currentRoom, msg);
             if(res.equalsIgnoreCase("ok")){
                     msg.setMsg("mymsg_"+msg.getMsg());
@@ -673,7 +633,7 @@ public class MainFrame extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
-                    new MainFrame("127.0.0.1", 0).setVisible(true);
+                    new MainFrame("127.0.0.1", 6).setVisible(true);
                 } catch (Exception ex) {
                     Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -733,7 +693,7 @@ public class MainFrame extends javax.swing.JFrame {
         }
         lstMessages = new JList<>(listModel);
         lstMessages.setModel(listModel);
-        Chat chatRoom = peer.getChatRoom(roomName);
+        Chat chatRoom = peer.findChatRoom(roomName);
         //Chat temporizzata
         if (chatRoom != null && chatRoom.getEndChat() != null) {
             activateCountdown(chatRoom.getEndChat());
@@ -763,12 +723,10 @@ public class MainFrame extends javax.swing.JFrame {
             TimerTask task = new TimerTask() {
                 @Override
                 public void run() {
-                    System.out.println("Run Task for chat room *GUI* " + chat.getRoomName());
-                    if (peer.getChatRoom(chat.getRoomName()) == null) {
+                    if (peer.findChatRoom(chat.getRoomName()) == null) {
                         if (buttonGroupRooms != null && buttonGroupRooms.getElements() != null) {
                             Collections.list(buttonGroupRooms.getElements()).stream().forEach((btn) -> {
                                 if (btn.getText().equalsIgnoreCase(chat.getRoomName())) {
-                                    System.out.println("a1");
                                     buttonGroupRooms.remove(btn);
                                     panelSubRooms.remove(btn);
                                     panelSubRooms.revalidate();
@@ -777,8 +735,7 @@ public class MainFrame extends javax.swing.JFrame {
                                     hmListMessages.remove(chat.getRoomName());
 
                                     JOptionPane.showMessageDialog(null, "Room deleted " + chat.getRoomName());
-                                    
-                                    if (currentRoom == chat.getRoomName()) {
+                                    if (btn.isSelected() || currentRoom == chat.getRoomName()) {
                                         listModel.removeAllElements();
                                         lstMessages.removeAll();
                                         lstMessages = new JList<>(listModel);
@@ -801,7 +758,7 @@ public class MainFrame extends javax.swing.JFrame {
             };
             Timer timer = new Timer("timerSc");
             long diff_sec = UtilDate.differenceDateInSeconds(Calendar.getInstance().getTime(), chat.getEndChat());
-            timer.schedule(task, (1000 * (diff_sec)) + ((peer.getPeerId() + 1) * 3000));
+            timer.schedule(task, (1000 * (diff_sec)) + ((peer.getPeerId() + 1) + 3000));
         }
     }
 

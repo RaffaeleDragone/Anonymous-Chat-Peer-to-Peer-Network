@@ -47,8 +47,6 @@ public class Chat implements Serializable {
         this.users.add(user);
     }
 
-    
-
     public Date getEndChat() {
         return endChat;
     }

@@ -1298,11 +1298,11 @@ Di seguito il Dockerfile dell'applicativo Anonymous-chat
 ```dockerfile
 FROM alpine/git
 WORKDIR /app
-RUN git clone https://github.com/RaffaeleDragone/P2P-Anonymous-Chat.git
+RUN git clone https://github.com/RaffaeleDragone/raffaele_dragone_adc_2020.git
 
 FROM maven:3.5-jdk-8-alpine
 WORKDIR /app
-COPY --from=0 /app /app
+COPY --from=0 /app/ /app
 RUN mvn package
 
 FROM java:openjdk-8

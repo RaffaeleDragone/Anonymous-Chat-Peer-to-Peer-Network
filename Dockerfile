@@ -14,6 +14,6 @@ ENV ID=0
 ENV SHOWGUI=yes
 COPY --from=1 /app/target/AnonymousChat-1.0-jar-with-dependencies.jar /root/app
 COPY --from=1 /app/images /root/app/images
-COPY --from=1 /app/log_structure /root/app
+COPY --from=1 /app/log_structure.xml /root/app
 
 CMD /usr/bin/java -jar AnonymousChat-1.0-jar-with-dependencies.jar -m $MASTERIP -id $ID -showgui $SHOWGUI

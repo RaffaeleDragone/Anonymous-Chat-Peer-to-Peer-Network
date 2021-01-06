@@ -78,16 +78,16 @@ public class MainFrame extends javax.swing.JFrame {
     }
 
     private void createRoom() {
-        String nameRoom = JOptionPane.showInputDialog("Please insert the name of room ");
+        String nameRoom = JOptionPane.showInputDialog(this,"Please insert the name of room ");
         if (nameRoom != null && !nameRoom.isEmpty()) {
             Chat room = new Chat();
             room.setRoomName(nameRoom);
             room.setUsers(new HashSet<>());
             //room.setPassword(pwd);
-            int useTimer = JOptionPane.showConfirmDialog(null, "Do you want to set a timer? ");
+            int useTimer = JOptionPane.showConfirmDialog(this, "Do you want to set a timer? ");
             if(useTimer!=2){
                 if (useTimer == 0) {
-                    String s_time = JOptionPane.showInputDialog("Please insert time in minutes ");
+                    String s_time = JOptionPane.showInputDialog(this,"Please insert time in minutes ");
                     if(s_time!=null && !s_time.equals("")){
                         Integer minutes=0;
                         try{
@@ -105,7 +105,7 @@ public class MainFrame extends javax.swing.JFrame {
                     
                 }
             if (peer.getMyChatList() != null && peer.getMyChatList().contains(nameRoom)) {
-                JOptionPane.showMessageDialog(null, "Room already in use");
+                JOptionPane.showMessageDialog(this, "Room already in use");
             } else {
                 String res = peer.createRoom_(room);
                 
@@ -131,11 +131,11 @@ public class MainFrame extends javax.swing.JFrame {
                         }
                     } else {
                         String out = res.equals("ko") ? "Problems during creation of room, retry." : res;
-                        JOptionPane.showMessageDialog(null, res);
+                        JOptionPane.showMessageDialog(this, res);
                     }
 
                 } else {
-                    JOptionPane.showMessageDialog(null, "Error during creation of room " + nameRoom);
+                    JOptionPane.showMessageDialog(this, "Error during creation of room " + nameRoom);
                 }
             }
             }
@@ -145,10 +145,10 @@ public class MainFrame extends javax.swing.JFrame {
 
     private void joinRoom() {
         //Code for join in room
-        String nameRoom = JOptionPane.showInputDialog("Please insert the name of room ");
+        String nameRoom = JOptionPane.showInputDialog(this,"Please insert the name of room ");
         if (nameRoom != null && !nameRoom.isEmpty()) {
             if (peer.getMyChatList() != null && peer.getMyChatList().contains(nameRoom)) {
-                JOptionPane.showMessageDialog(null, "Room already created");
+                JOptionPane.showMessageDialog(this, "Room already created");
             } else {
                 String res = peer.joinRoom_(nameRoom);
                 //boolean res = peer.joinRoom(nameRoom);
@@ -175,11 +175,11 @@ public class MainFrame extends javax.swing.JFrame {
                     String out = "Error during joining in room";
                     if(res!=null && !res.equals("ko"))
                         out+=" "+res;
-                    JOptionPane.showMessageDialog(null, out);
+                    JOptionPane.showMessageDialog(this, out);
                 }
             }
         } else {
-            JOptionPane.showMessageDialog(null, "Room name cannot be null " + nameRoom);
+            JOptionPane.showMessageDialog(this, "Room name cannot be null " + nameRoom);
         }
     }
 
@@ -560,7 +560,7 @@ public class MainFrame extends javax.swing.JFrame {
                 });
             }
         } else {
-            JOptionPane.showMessageDialog(null, "Error during leaving of room " + currentRoom);
+            JOptionPane.showMessageDialog(this, "Error during leaving of room " + currentRoom);
         }
     }//GEN-LAST:event_btnLeaveRoomActionPerformed
 
@@ -579,34 +579,37 @@ public class MainFrame extends javax.swing.JFrame {
                 fc.setFileFilter(imageFilter);
                 int returnVal = fc.showOpenDialog(this);
 
-                if (returnVal == JFileChooser.APPROVE_OPTION) {
+                if (returnVal==0 && returnVal == JFileChooser.APPROVE_OPTION) {
                     File file = fc.getSelectedFile();
                     path_img=file.getAbsolutePath();
                 }
             } catch (Exception e) {
             }
             
-            
-            String txt = "";
-            Message msg = new Message();
-            msg.setType(1);
-            msg.setRoomName(currentRoom);
-            msg.setMsg(txt);
-            msg.setDate(Calendar.getInstance().getTime());
+            if(path_img!=null){
+                String txt = "";
+                Message msg = new Message();
+                msg.setType(1);
+                msg.setRoomName(currentRoom);
+                msg.setMsg(txt);
+                msg.setDate(Calendar.getInstance().getTime());
 
-            BufferedImage image = ImageIO.read(new File(path_img));
-            image = ImageCompressor.resizeImage(image, 128, 128);
-            byte[] newimg = ImageCompressor.compressImageInJpeg(image, 0.8f);
-            msg.setImage(newimg);
+                BufferedImage image = ImageIO.read(new File(path_img));
+                image = ImageCompressor.resizeImage(image, 128, 128);
+                byte[] newimg = ImageCompressor.compressImageInJpeg(image, 0.8f);
+                msg.setImage(newimg);
 
-            String res = peer.sendMessage_(currentRoom, msg);
-            if(res.equalsIgnoreCase("ok")){
-                    msg.setMsg("mymsg_"+msg.getMsg());
+                String res = peer.sendMessage_(currentRoom, msg);
+                if (res.equalsIgnoreCase("ok")) {
+                    msg.setMsg("mymsg_" + msg.getMsg());
                     listModel.addElement(msg);
-                    if(hmListMessages.get(currentRoom)==null)
+                    if (hmListMessages.get(currentRoom) == null) {
                         hmListMessages.put(currentRoom, new ArrayList<>());
+                    }
                     hmListMessages.get(currentRoom).add(msg);
+                }
             }
+            
         } catch (IOException ex) {
             Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -648,7 +651,7 @@ public class MainFrame extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
-                    new MainFrame("127.0.0.1", 1).setVisible(true);
+                    new MainFrame("127.0.0.1", 0).setVisible(true);
                 } catch (Exception ex) {
                     Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -749,7 +752,7 @@ public class MainFrame extends javax.swing.JFrame {
 
                                     hmListMessages.remove(chat.getRoomName());
 
-                                    JOptionPane.showMessageDialog(null, "Room deleted " + chat.getRoomName());
+                                    JOptionPane.showMessageDialog(MainFrame.this, "Room deleted " + chat.getRoomName());
                                     if (btn.isSelected() || currentRoom == chat.getRoomName()) {
                                         listModel.removeAllElements();
                                         lstMessages.removeAll();

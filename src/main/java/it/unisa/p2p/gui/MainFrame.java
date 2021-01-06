@@ -100,6 +100,8 @@ public class MainFrame extends javax.swing.JFrame {
                             Calendar endDateTime = Calendar.getInstance();
                             endDateTime.setTimeInMillis(endDateTime.getTimeInMillis() + mills);
                             room.setEndChat(endDateTime.getTime());
+                        }else{
+                            return;
                         }
                     }
                     

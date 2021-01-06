@@ -1345,7 +1345,7 @@ Se si vuole eseguire l'applicativo tramite GUI con docker occorre installare :
 4. Buildare il container docker :
 
    ```
-   docker build --no-cache -t p2p-anonymous-chat-client .
+   docker build --no-cache -t p2p-anonymouschat-client .
    ```
 
 5. Start the master peer

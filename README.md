@@ -1385,14 +1385,16 @@ A questo punto è possibile avviare gli altri peer modificando il parametro NAME
 
 **GUI**
 
+Generalmente l'ip del container master risulta essere "172.17.0.2", in caso contrario modificarlo dallo snippet di seguito 
+
 ```
-docker run -i --name PEER-1 -e DISPLAY=host.docker.internal:0 -e MASTERIP="IPCONTAINERMASTER" -e ID=1 -e SHOWGUI="yes" p2p-anonymouschat-client
+docker run -i --name PEER-1 -e DISPLAY=host.docker.internal:0 -e MASTERIP="172.17.0.2" -e ID=1 -e SHOWGUI="yes" p2p-anonymouschat-client
 ```
 
 **Terminale**
 
 ```
-docker run -i --name PEER-1 -e MASTERIP="IPCONTAINERMASTER" -e ID=1 -e SHOWGUI="no" p2p-anonymouschat-client
+docker run -i --name PEER-1 -e MASTERIP="172.17.0.2" -e ID=1 -e SHOWGUI="no" p2p-anonymouschat-client
 ```
 
 

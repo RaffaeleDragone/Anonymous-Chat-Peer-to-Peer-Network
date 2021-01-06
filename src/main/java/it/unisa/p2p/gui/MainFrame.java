@@ -85,15 +85,25 @@ public class MainFrame extends javax.swing.JFrame {
             room.setUsers(new HashSet<>());
             //room.setPassword(pwd);
             int useTimer = JOptionPane.showConfirmDialog(null, "Do you want to set a timer? ");
-            if (useTimer == 0) {
-                String s_time = JOptionPane.showInputDialog("Please insert time in minutes ");
-                Integer minutes = Integer.parseInt(s_time);
-                Long mills = 1000 * 60 * minutes.longValue();
-                Calendar endDateTime = Calendar.getInstance();
-                endDateTime.setTimeInMillis(endDateTime.getTimeInMillis() + mills);
-                room.setEndChat(endDateTime.getTime());
-
-            }
+            if(useTimer!=2){
+                if (useTimer == 0) {
+                    String s_time = JOptionPane.showInputDialog("Please insert time in minutes ");
+                    if(s_time!=null && !s_time.equals("")){
+                        Integer minutes=0;
+                        try{
+                            minutes = Integer.parseInt(s_time);
+                        }catch(Exception ex){
+                            minutes=0;
+                        }
+                        if(minutes>0){
+                            Long mills = 1000 * 60 * minutes.longValue();
+                            Calendar endDateTime = Calendar.getInstance();
+                            endDateTime.setTimeInMillis(endDateTime.getTimeInMillis() + mills);
+                            room.setEndChat(endDateTime.getTime());
+                        }
+                    }
+                    
+                }
             if (peer.getMyChatList() != null && peer.getMyChatList().contains(nameRoom)) {
                 JOptionPane.showMessageDialog(null, "Room already in use");
             } else {
@@ -128,6 +138,8 @@ public class MainFrame extends javax.swing.JFrame {
                     JOptionPane.showMessageDialog(null, "Error during creation of room " + nameRoom);
                 }
             }
+            }
+            
         }
     }
 
@@ -160,8 +172,10 @@ public class MainFrame extends javax.swing.JFrame {
                         scheduleCheckExistencyChat(chat);
                     }
                 } else {
-
-                    JOptionPane.showMessageDialog(null, "Error during joining in room " + nameRoom+" "+res!=null && !res.equals("ko") ? res : "");
+                    String out = "Error during joining in room";
+                    if(res!=null && !res.equals("ko"))
+                        out+=" "+res;
+                    JOptionPane.showMessageDialog(null, out);
                 }
             }
         } else {
@@ -634,7 +648,7 @@ public class MainFrame extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
-                    new MainFrame("127.0.0.1", 6).setVisible(true);
+                    new MainFrame("127.0.0.1", 1).setVisible(true);
                 } catch (Exception ex) {
                     Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
                 }

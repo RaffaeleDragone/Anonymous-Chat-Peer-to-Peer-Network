@@ -65,9 +65,9 @@ In questo modo, l'utente che dovrà inviare una immagine non la invierà a tutti
 #  2. Tecnologie utilizzate
 
 - **Linguaggio di programmazione**: Java 8
-- **DHT management**: TOM P2P v5.0
-- **Software Project Management**: Apache Maven v.3.6.3
-- **Containerization technology**: Docker v.19.03.13
+- **DHT management**: TOM P2P
+- **Software Project Management**: Apache Maven
+- **Containerization technology**: Docker
 - **Testing**: JUnit v4.11
 
 #  3. Esposizione della struttura del progetto
@@ -1309,7 +1309,7 @@ ENV ID=0
 ENV SHOWGUI=yes
 COPY --from=1 /app/target/AnonymousChat-1.0-jar-with-dependencies.jar /root/app
 COPY --from=1 /app/images /root/app/images
-COPY --from=1 /app/log_structure /root/app
+COPY --from=1 /app/log_structure.xml /root/app
 
 CMD /usr/bin/java -jar AnonymousChat-1.0-jar-with-dependencies.jar -m $MASTERIP -id $ID -showgui $SHOWGUI
 ```

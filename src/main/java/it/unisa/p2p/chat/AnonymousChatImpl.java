@@ -148,8 +148,10 @@ public class AnonymousChatImpl implements AnonymousChat {
             c.getUsers().add(_dht.peer().peerAddress());//Aggiungo il peer agli utenti della room
             _dht.put(Number160.createHash(_room_name)).data(new Data(c)).start().awaitUninterruptibly();
             myChatList.add(_room_name);//Aggiungo il nome della room in una lista locale al peer contenente le room in cui è presente
+            logger.info("Room created, name : "+_room_name);
             return true;
         } catch (Exception e) {
+            logger.info("Problem during creation of room, name : "+_room_name);
             e.printStackTrace();
         }
         return false;
@@ -213,11 +215,13 @@ public class AnonymousChatImpl implements AnonymousChat {
                 if (chat.getEndChat() != null) {//Verifica se la room nella quale è appena entrato ha una data di scadenza
                     scheduleExpireChat(chat);//Schedula il task per l'eliminazione della room
                 }
+                logger.info("Room joined, name : "+_room_name);
                 return true;
             }
             return false;
 
         } catch (Exception e) {
+            logger.info("Problems during join, name room : "+_room_name);
             e.printStackTrace();
         }
         return false;
@@ -234,6 +238,7 @@ public class AnonymousChatImpl implements AnonymousChat {
                     currentChat.removeAnUser(_dht.peer().peerAddress());//Rimuove il peer dalla lista di peer partecipanti alla chat
                     _dht.put(Number160.createHash(_room_name)).data(new Data(currentChat)).start().awaitUninterruptibly();//Update dht
                     myChatList.remove(_room_name);
+                    logger.info("Room leaved, name : "+_room_name);
                     return true;
                 } else {
                     return false;
@@ -241,6 +246,7 @@ public class AnonymousChatImpl implements AnonymousChat {
             }
             return false;
         } catch (Exception e) {
+            logger.info("Problems during leaving room, name : "+_room_name);
             e.printStackTrace();
         }
         return false;
@@ -293,12 +299,14 @@ public class AnonymousChatImpl implements AnonymousChat {
                                     new CustomFutureDirectAsyncListener(_room_name, peerToSend, msg, 1));//Custom listener implementato per l'invio non bloccante di messaggi diretti
                         }
                     }
+                    logger.info("Text message sent, name room : "+_room_name);
                     return true;
                 }
                 return false;
             }
             return false;
         } catch (Exception e) {
+            logger.info("Problems during send text message, name room : "+_room_name);
             e.printStackTrace();
         }
         return false;
@@ -439,7 +447,7 @@ public class AnonymousChatImpl implements AnonymousChat {
                     if (tentative >= 2) {//Se l'invio è stato provato per 2 volte
                         removeUserFromChat(_room_name,receiver);
                     } else {
-                        logger.error("Future not successful. Reason = " + future.failedReason());
+                        logger.info("Future not successful. Reason = " + future.failedReason());
                         future = _dht.peer().sendDirect(receiver).object(msg).start();//Prova a reinviare il messaggio
                         future.addListener(new CustomFutureDirectAsyncListener(_room_name, receiver, msg, 2));//Imposta tentativo = 2
                     }

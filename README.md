@@ -32,15 +32,12 @@
 
 Anonymous-chat è un programma di messaggistica istantanea peer-to-peer (p2p) anonimo. Ciò significa che in fase di avvio il programma non richiederà alcuna registrazione utente.
 
-L'obiettivo principale dello sviluppo del progetto è fornire la privacy che si ottiene utilizzando l'anonimato.
-
+L'obiettivo principale dello sviluppo del progetto è fornire la privacy che si ottiene utilizzando l'anonimato, sfruttando una rete peer-to-peer.
 Può essere utilizzato per la messaggistica istantanea e il trasferimento di immagini con supporto per chat private e chat di gruppo.
-
-In anonymous-chat ogni utente ( peer ) può inviare messaggi in una chat pubblica in modo anonimo.
 
 Sono state fornite delle api ben definite che consentono ad ogni utente di : 
 
-1. Creare una nuova room.
+1. Creare una nuova room ( L'utente che crea una room effettua anche una join implicita )
 2. Entrare in una room esistente.
 3. Lasciare una room.
 4. Inviare messaggi testuali.
@@ -721,7 +718,7 @@ In caso negativo, raggiunta la soglia limite di 2 tentativi, il peer ricevitore 
 Per quanto riguarda l'invio di messaggi contenenti immagini è stata utilizzata una tecnica diversa dall'invio di messaggi di testo, più nello specifico : 
 
 - Per l'invio di messaggi di testo il peer sender invia un messaggio diretto ad ogni utente della chat.
-- Per l'invio di messaggi contenenti immagini da parte del sender a tutti gli utenti della chat potrebbe essere troppo oneroso, ed è quindi stato implementato un meccanismo che permetta di sfruttare il potenziale di una rete peer-to-peer , rendendo partecipi all'invio della immagine anche alcuni peer ricevitori, distribuendo il numero di messaggi totali da inviare in modo equo ( anche se con un leggero carico maggiore da parte del sender iniziale ).
+- L'invio di messaggi contenenti immagini da parte del sender a tutti gli utenti della chat potrebbe essere troppo oneroso, ed è quindi stato implementato un meccanismo che permetta di sfruttare il potenziale di una rete peer-to-peer , rendendo partecipi all'invio della immagine anche alcuni peer ricevitori, distribuendo il numero di messaggi totali da inviare in modo equo ( anche se con un leggero carico maggiore da parte del sender iniziale ).
 
 ```java
 HashSet<PeerAddress> receivers = currentChat.getUsers();
@@ -1302,7 +1299,7 @@ RUN git clone https://github.com/RaffaeleDragone/raffaele_dragone_adc_2020.git
 
 FROM maven:3.5-jdk-8-alpine
 WORKDIR /app
-COPY --from=0 /app/ /app
+COPY --from=0 /app/raffaele_dragone_adc_2020 /app
 RUN mvn package
 
 FROM java:openjdk-8
@@ -1389,13 +1386,13 @@ A questo punto è possibile avviare gli altri peer modificando il parametro NAME
 **GUI**
 
 ```
-docker run -i --name PEER-1 -e DISPLAY=host.docker.internal:0 -e MASTERIP="172.17.0.2" -e ID=1 -e SHOWGUI="yes" p2p-anonymouschat-client
+docker run -i --name PEER-1 -e DISPLAY=host.docker.internal:0 -e MASTERIP="IPCONTAINERMASTER" -e ID=1 -e SHOWGUI="yes" p2p-anonymouschat-client
 ```
 
 **Terminale**
 
 ```
-docker run -i --name PEER-1 -e MASTERIP="172.17.0.2" -e ID=1 -e SHOWGUI="no" p2p-anonymouschat-client
+docker run -i --name PEER-1 -e MASTERIP="IPCONTAINERMASTER" -e ID=1 -e SHOWGUI="no" p2p-anonymouschat-client
 ```
 
 

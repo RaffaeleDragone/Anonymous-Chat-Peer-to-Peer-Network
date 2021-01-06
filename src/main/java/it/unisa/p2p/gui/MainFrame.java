@@ -61,6 +61,7 @@ public class MainFrame extends javax.swing.JFrame {
     DefaultListModel<Message> listModel = new DefaultListModel<>();
     javax.swing.Timer timerCountdown;
 
+    private static org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger(MainFrame.class);
     public MainFrame() {
         initComponents();
         activatePanelWriterMessages(false);

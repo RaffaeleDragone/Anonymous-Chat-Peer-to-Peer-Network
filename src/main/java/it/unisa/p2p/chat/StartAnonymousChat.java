@@ -33,7 +33,7 @@ public class StartAnonymousChat {
         StartAnonymousChat chat=new StartAnonymousChat();
         final CmdLineParser parser = new CmdLineParser(chat);
         parser.parseArgument(args);
-        DOMConfigurator.configure("log_structure");
+        DOMConfigurator.configure("log_structure.xml");
         if(showGui!=null && showGui.equalsIgnoreCase("yes")){
             MainFrame gui=new MainFrame(master,id);
             gui.setVisible(true);

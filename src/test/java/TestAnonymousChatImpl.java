@@ -404,18 +404,22 @@ public class TestAnonymousChatImpl {
      */
     @Test
     @DisplayName("5_Test crash peer")
-    void textCaseSendMessageCrashUser() throws Exception {
+    void textCaseCrashUser() throws Exception {
         String nameRoom="5_Test crash peer";
+        //Il peer che crea una room ci effettua anche una join diretta. num users room = 1
         assertTrue("ok".equals(peer0.createRoom_(new Chat(nameRoom,null,null))));
         AnonymousChatImpl peertmp = new AnonymousChatImpl(5, "127.0.0.1", new MessageListenerImpl(20));
-        assertTrue("ok".equals(peertmp.joinRoom_(nameRoom)));
-        peertmp.forceLeaveNetwork();
+        assertTrue("ok".equals(peertmp.joinRoom_(nameRoom))); // num users room = 2
+        peertmp.forceLeaveNetwork();// num users room = 2
 
         Message msg=new Message();
         msg.setMsg("Hello world");
         msg.setType(0);
         msg.setRoomName(nameRoom);
         assertTrue("ok".equals(peer0.sendMessage_(nameRoom,msg)));
+        // Si attiva il listener dell'invio dei messaggi, che prova ad inviare per 2 volte il messaggio senza successo.
+        //Avvia quindi la procedura per eliminare l'utente dalla chat perchè non + presente in rete.
+
         //wait some time
         Thread.sleep(3000);
         Chat chat = peer0.findChatRoom(nameRoom);

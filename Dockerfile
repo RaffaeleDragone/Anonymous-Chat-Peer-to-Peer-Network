@@ -4,7 +4,7 @@ RUN git clone https://github.com/RaffaeleDragone/raffaele_dragone_adc_2020.git
 
 FROM maven:3.5-jdk-8-alpine
 WORKDIR /app
-COPY --from=0 /app/ /app
+COPY --from=0 /app/raffaele_dragone_adc_2020 /app
 RUN mvn package
 
 FROM java:openjdk-8

@@ -801,7 +801,9 @@ Altra nota importante è la compressione della immagine in jpeg ,mantenendo comu
 
 #  4. Test Cases
 
-I test cases sono stati implementati con Junit. Di seguito l'implementazione :
+I test cases sono stati implementati con Junit.
+
+Di seguito l'implementazione :
 
 ```java
 public class TestAnonymousChatImpl {
@@ -1397,5 +1399,7 @@ docker run -i --name PEER-1 -e DISPLAY=host.docker.internal:0 -e MASTERIP="172.1
 docker run -i --name PEER-1 -e MASTERIP="172.17.0.2" -e ID=1 -e SHOWGUI="no" p2p-anonymouschat-client
 ```
 
+*Ultime note* 
 
+Nella versione gui, per inviare una immagine occorre aprire la cartella app > images.
 

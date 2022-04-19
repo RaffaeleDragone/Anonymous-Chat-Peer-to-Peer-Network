@@ -2,14 +2,6 @@
 
 <img src="https://s3.amazonaws.com/lowres.cartoonstock.com/telecommunications-chatting-chatroom-chatting_over_the_fence-neighbour-gossip-gri0032_low.jpg" alt="Welcome" style="zoom:50%;"/>
 
-**Candidato** : *Dragone Raffaele*
-
-**Matricola** : *0522500863*
-
-**Anno Accademico** : *2020/2021*
-
-**Architetture Distribuite per il Cloud**
-
 # Sommario.
 
 1. Presentazione della soluzione proposta

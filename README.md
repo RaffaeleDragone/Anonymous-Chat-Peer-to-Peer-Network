@@ -4,11 +4,11 @@
 
 # Sommario.
 
-1. Presentazione della soluzione proposta
+1. Introduzione
 
 2. Tecnologie utilizzate
 
-3. Esposizione della struttura del progetto
+3. Struttura del lavoro
 
    3.1 Descrizione del codice
 
@@ -20,7 +20,7 @@
 
 7. Docker
 
-#  1. Presentazione della soluzione proposta
+#  1. Introduzione
 
 Anonymous-chat è un programma di messaggistica istantanea peer-to-peer (p2p) anonimo. Ciò significa che in fase di avvio il programma non richiederà alcuna registrazione utente.
 
@@ -62,9 +62,9 @@ In questo modo, l'utente che dovrà inviare una immagine non la invierà a tutti
 - **Containerization technology**: Docker
 - **Testing**: JUnit v4.11
 
-#  3. Esposizione della struttura del progetto
+#  3. Struttura del lavoro
 
-Il progetto è strutturato in diversi package.
+Il lavoro è strutturato in diversi package.
 
 	1. beans.package
 		1.1 Chat.java
